@@ -67,25 +67,47 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 # Feature Scaling
 scaler = StandardScaler()
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+# Load Data
+df = pd.read_csv("data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv")
+
+# Clean Missing Values in TotalCharges
+df['TotalCharges'] = pd.to_numeric(df['TotalCharges'].replace(" ", np.nan))
+df['TotalCharges'] = df['TotalCharges'].fillna(df['TotalCharges'].median())
+
+# Drop customerID column if present
+if 'customerID' in df.columns:
+    df = df.drop(columns=['customerID'])
+
+# Convert Target to Binary (1 / 0)
+df['Churn'] = df['Churn'].map({'Yes': 1, 'No': 0})
+
+# One-Hot Encode Categorical Features
+df_encoded = pd.get_dummies(df, drop_first=True)
+
+# Separate Features (X) and Target (y)
+X = df_encoded.drop(columns=['Churn'])
+y = df_encoded['Churn']
+
+# Train-Test Split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+# Scale Features
+scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
-print("Preprocessing complete! Features count:", X.shape[1])
-
-# Task 4: Define 4 Classification Models
-models = {
-    "Logistic Regression": LogisticRegression(),
-    "Decision Tree": DecisionTreeClassifier(random_state=42),
-    "Random Forest": RandomForestClassifier(random_state=42),
-    "XGBoost": XGBClassifier(
-        use_label_encoder=False, eval_metric="logloss", random_state=42
-    ),
-}
-
-# Task 5: Compare Models
-results = []
+# Model Training Loop (Line 87+)
 for name, model in models.items():
     model.fit(X_train_scaled, y_train)
+    preds = model.predict(X_test_scaled)
+    # ... rest of your loop code ...
     preds = model.predict(X_test_scaled)
     probs = model.predict_proba(X_test_scaled)[:, 1]
 
@@ -194,3 +216,8 @@ print("Model, Scaler, and Feature Names saved successfully!")
 #         st.success("Prediction: Low Churn Risk")
 # 
 #     st.write("**Top Factors:** Contract, Tenure, Monthly Charges")
+# 1. Convert TotalCharges string spaces to numeric floats
+df['TotalCharges'] = pd.to_numeric(df['TotalCharges'].replace(" ", np.nan))
+
+# 2. Impute missing values with the column median
+df['TotalCharges'] = df['TotalCharges'].fillna(df['TotalCharges'].median())
