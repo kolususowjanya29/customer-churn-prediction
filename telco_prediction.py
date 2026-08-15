@@ -104,7 +104,24 @@ X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
 # Model Training Loop (Line 87+)
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+
+# Define the models dictionary
+models = {
+    "Logistic Regression": LogisticRegression(max_iter=1000),
+    "Decision Tree": DecisionTreeClassifier(random_state=42),
+    "Random Forest": RandomForestClassifier(random_state=42),
+    "XGBoost": XGBClassifier(eval_metric='logloss', random_state=42)
+}
+
+# Model Training Loop
 for name, model in models.items():
+    model.fit(X_train_scaled, y_train)
+    preds = model.predict(X_test_scaled)
+    # ... rest of your loop code ...
     model.fit(X_train_scaled, y_train)
     preds = model.predict(X_test_scaled)
     # ... rest of your loop code ...
