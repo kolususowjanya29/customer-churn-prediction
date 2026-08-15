@@ -7,8 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1KPj-s6Mo7G0CJ2OA1Op12-bdJSmO_Ah8
 """
 
-!pip install xgboost shap streamlit pyngrok joblib -q
-
 import joblib
 import warnings
 import matplotlib.pyplot as plt
