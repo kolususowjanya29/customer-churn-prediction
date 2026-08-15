@@ -73,7 +73,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 # Load Data
-df = pd.read_csv("data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv")
+df = pd.read_csv("https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv")
 
 # Clean Missing Values in TotalCharges
 df['TotalCharges'] = pd.to_numeric(df['TotalCharges'].replace(" ", np.nan))
