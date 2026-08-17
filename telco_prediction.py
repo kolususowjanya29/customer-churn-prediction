@@ -1,62 +1,58 @@
+import os
 import joblib
-import numpy as np
-import pandas as pd
 import streamlit as st
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from xgboost import XGBClassifier
 
-st.set_page_config(page_title="Telco Churn Predictor", layout="centered")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_DIR = os.path.join(BASE_DIR, "models")
 
-st.title("📉 Customer Churn Prediction")
-st.write("Provide customer information to assess churn risk.")
-
+def train_and_save_artifacts():
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    
+    # 1. Load and clean data
+    url = "https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv"
+    df = pd.read_csv(url)
+    df['TotalCharges'] = pd.to_numeric(df['TotalCharges'].replace(" ", np.nan), errors="coerce")
+    df['TotalCharges'] = df['TotalCharges'].fillna(df['TotalCharges'].median())
+    
+    if 'customerID' in df.columns:
+        df.drop(columns=['customerID'], inplace=True)
+        
+    df['Churn'] = df['Churn'].map({'Yes': 1, 'No': 0})
+    
+    categorical_cols = df.select_dtypes(include=['object']).columns
+    df_encoded = pd.get_dummies(df, columns=categorical_cols, drop_first=True)
+    
+    X = df_encoded.drop(columns=['Churn'])
+    y = df_encoded['Churn']
+    
+    # 2. Fit Scaler and Model
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
+    model = XGBClassifier(eval_metric="logloss", random_state=42)
+    model.fit(X_scaled, y)
+    
+    # 3. Save Artifacts
+    joblib.dump(model, os.path.join(MODEL_DIR, "best_model.pkl"))
+    joblib.dump(scaler, os.path.join(MODEL_DIR, "scaler.pkl"))
+    joblib.dump(list(X.columns), os.path.join(MODEL_DIR, "feature_names.pkl"))
 
 @st.cache_resource
 def load_artifacts():
-    model = joblib.load("models/best_model.pkl")
-    scaler = joblib.load("models/scaler.pkl")
-    features = joblib.load("models/feature_names.pkl")
+    model_path = os.path.join(MODEL_DIR, "best_model.pkl")
+    
+    # If artifacts do not exist, run training step once
+    if not os.path.exists(model_path):
+        with st.spinner("Training initial model... Please wait."):
+            train_and_save_artifacts()
+            
+    model = joblib.load(model_path)
+    scaler = joblib.load(os.path.join(MODEL_DIR, "scaler.pkl"))
+    features = joblib.load(os.path.join(MODEL_DIR, "feature_names.pkl"))
     return model, scaler, features
 
-
 model, scaler, feature_names = load_artifacts()
-
-# User Inputs
-tenure = st.slider("Tenure (Months)", 0, 72, 12)
-monthly_charges = st.number_input("Monthly Charges ($)", 18.0, 120.0, 70.0)
-total_charges = st.number_input(
-    "Total Charges ($)", 18.0, 9000.0, float(tenure * monthly_charges)
-)
-contract = st.selectbox(
-    "Contract Type", ["Month-to-month", "One year", "Two year"]
-)
-
-if st.button("Predict Churn"):
-    # Construct zeroed dictionary matching trained features
-    input_dict = {feat: 0 for feat in feature_names}
-
-    if "tenure" in input_dict:
-        input_dict["tenure"] = tenure
-    if "MonthlyCharges" in input_dict:
-        input_dict["MonthlyCharges"] = monthly_charges
-    if "TotalCharges" in input_dict:
-        input_dict["TotalCharges"] = total_charges
-    if f"Contract_{contract}" in input_dict:
-        input_dict[f"Contract_{contract}"] = 1
-
-    input_df = pd.DataFrame([input_dict])
-    input_scaled = scaler.transform(input_df)
-
-    # Prediction
-    prob = model.predict_proba(input_scaled)[0][1]
-    churn_percentage = int(prob * 100)
-
-    st.markdown("---")
-    st.metric("Churn Probability", f"{churn_percentage}%")
-
-    if churn_percentage >= 70:
-        st.error("Prediction: High Churn Risk")
-    elif churn_percentage >= 40:
-        st.warning("Prediction: Medium Churn Risk")
-    else:
-        st.success("Prediction: Low Churn Risk")
-
-    st.write("**Top Factors:** Contract, Tenure, Monthly Charges")
