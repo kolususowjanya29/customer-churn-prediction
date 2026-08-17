@@ -23,7 +23,7 @@ def train_and_save_artifacts():
         
     df['Churn'] = df['Churn'].map({'Yes': 1, 'No': 0})
     
-    categorical_cols = df.select_dtypes(include=['object']).columns
+    categorical_cols = df.select_dtypes(include=['object', 'str']).columns
     df_encoded = pd.get_dummies(df, columns=categorical_cols, drop_first=True)
     
     X = df_encoded.drop(columns=['Churn'])
